@@ -34,8 +34,6 @@ provider "azurerm" {
   features {}
 }
 
-data "azurerm_client_config" "current" {}
-
 # Microsoft Fabric capacities are not offered in every Azure region, so this
 # example randomises across a vetted subset rather than using the
 # Azure/avm-utl-regions module (which returns every region).
@@ -81,8 +79,10 @@ resource "azurerm_resource_group" "this" {
   name     = module.naming.resource_group.name_unique
 }
 
-# A deterministic service principal to receive the role assignment, so the
-# example behaves identically whether it is applied by a user or by CI.
+# A deterministic service principal used both to administer the capacity and to
+# receive the role assignment, so the example behaves identically whether it is
+# applied by a user or by CI. The Fabric capacities API accepts an Entra user by
+# UPN, or a service principal by object ID -- a user's object ID is rejected.
 resource "azurerm_user_assigned_identity" "this" {
   location            = azurerm_resource_group.this.location
   name                = module.naming.user_assigned_identity.name_unique
@@ -96,10 +96,8 @@ module "fabric_capacity" {
   name      = "fc${random_string.suffix.result}"
   parent_id = azurerm_resource_group.this.id
   sku_name  = "F2"
-  # The Fabric capacities API accepts an Entra user UPN or a service-principal
-  # object ID. The deploying identity is used here so the example needs no
-  # inputs. In a real deployment, supply the UPNs of your capacity administrators.
-  administration_members = [data.azurerm_client_config.current.object_id]
+  # In a real deployment, supply the UPNs of your capacity administrators.
+  administration_members = [azurerm_user_assigned_identity.this.principal_id]
   enable_telemetry       = var.enable_telemetry
 
   lock = {
@@ -155,7 +153,6 @@ The following resources are used by this module:
 - [azurerm_user_assigned_identity.this](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/user_assigned_identity) (resource)
 - [random_integer.region_index](https://registry.terraform.io/providers/hashicorp/random/latest/docs/resources/integer) (resource)
 - [random_string.suffix](https://registry.terraform.io/providers/hashicorp/random/latest/docs/resources/string) (resource)
-- [azurerm_client_config.current](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/data-sources/client_config) (data source)
 
 <!-- markdownlint-disable MD013 -->
 ## Required Inputs
