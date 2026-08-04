@@ -64,6 +64,14 @@ resource "azurerm_resource_group" "this" {
   name     = module.naming.resource_group.name_unique
 }
 
+# A deterministic service principal to receive the role assignment, so the
+# example behaves identically whether it is applied by a user or by CI.
+resource "azurerm_user_assigned_identity" "this" {
+  location            = azurerm_resource_group.this.location
+  name                = module.naming.user_assigned_identity.name_unique
+  resource_group_name = azurerm_resource_group.this.name
+}
+
 module "fabric_capacity" {
   source = "../../"
 
@@ -76,4 +84,36 @@ module "fabric_capacity" {
   # inputs. In a real deployment, supply the UPNs of your capacity administrators.
   administration_members = [data.azurerm_client_config.current.object_id]
   enable_telemetry       = var.enable_telemetry
+
+  lock = {
+    kind = "CanNotDelete"
+    name = "lock-fabric-capacity"
+  }
+
+  role_assignments = {
+    reader = {
+      role_definition_id_or_name = "Reader"
+      principal_id               = azurerm_user_assigned_identity.this.principal_id
+      principal_type             = "ServicePrincipal"
+      description                = "Read access to the Fabric capacity for the example workload identity."
+      # The identity is created in the same apply, so skip the Entra replication check.
+      skip_service_principal_aad_check = true
+    }
+  }
+
+  retry = {
+    error_message_regex = ["409 Conflict", "429 Too Many Requests"]
+  }
+
+  timeouts = {
+    create = "45m"
+    delete = "45m"
+    read   = "5m"
+    update = "45m"
+  }
+
+  tags = {
+    environment = "example"
+    workload    = "fabric-capacity"
+  }
 }
