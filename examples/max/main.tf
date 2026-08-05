@@ -17,29 +17,16 @@ provider "azurerm" {
   features {}
 }
 
-# Microsoft Fabric capacities are not offered in every Azure region, so this
-# example randomises across a vetted subset rather than using the
-# Azure/avm-utl-regions module (which returns every region).
+# Microsoft Fabric capacities are not offered in every Azure region, and Fabric
+# capacity-unit (CU) quota is granted per subscription *per region*. Randomising
+# the region -- as the Azure/avm-utl-regions module would -- means an apply can
+# land in a region where the subscription's Fabric CU limit is 0 and fail before
+# it creates anything. The examples therefore pin a single region that has
+# default (out-of-the-box) Fabric CU quota, so they deploy without first raising
+# a quota-increase request.
+# https://learn.microsoft.com/fabric/enterprise/fabric-quotas
 locals {
-  fabric_regions = [
-    "australiaeast",
-    "canadacentral",
-    "eastus",
-    "eastus2",
-    "francecentral",
-    "northeurope",
-    "southeastasia",
-    "swedencentral",
-    "uksouth",
-    "westeurope",
-    "westus2",
-    "westus3",
-  ]
-}
-
-resource "random_integer" "region_index" {
-  max = length(local.fabric_regions) - 1
-  min = 0
+  location = "swedencentral"
 }
 
 module "naming" {
@@ -58,7 +45,7 @@ resource "random_string" "suffix" {
 }
 
 resource "azurerm_resource_group" "this" {
-  location = local.fabric_regions[random_integer.region_index.result]
+  location = local.location
   name     = module.naming.resource_group.name_unique
 }
 

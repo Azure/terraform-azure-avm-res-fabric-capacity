@@ -11,6 +11,14 @@ This deploys the module exercising every AVM interface the `Microsoft.Fabric/cap
 
 Diagnostic settings, managed identities, private endpoints and customer-managed keys are intentionally absent — the Fabric capacities resource does not support them. See the [module notes](../../README.md#notes) for the evidence behind each exclusion.
 
+## Why Sweden Central?
+
+The example pins `swedencentral` rather than randomising a region.
+
+Fabric [capacity-unit (CU) quota](https://learn.microsoft.com/fabric/enterprise/fabric-quotas) is granted **per subscription, per region**. A subscription that has never used Fabric shows a limit of `0` CUs in most regions, and `Microsoft.Fabric/capacities` fails to create there until a quota-increase request is approved. Randomising the region — as `Azure/avm-utl-regions` does — makes the example fail intermittently for that reason alone, and Fabric capacities are not offered in every region either.
+
+Sweden Central carries default, out-of-the-box Fabric CU quota, so `terraform apply` succeeds on a fresh subscription with no quota request. Change `local.location` to any region where you hold Fabric quota; check yours in **Azure portal → Quotas → Microsoft Fabric**, or with the [Fabric Capacities - List Usages](https://learn.microsoft.com/rest/api/microsoftfabric/fabric-capacities/list-by-subscription) API.
+
 > [!NOTE]
 > A Fabric capacity bills from creation until it is deleted or paused. Destroy the example when you are done.
 
@@ -34,29 +42,16 @@ provider "azurerm" {
   features {}
 }
 
-# Microsoft Fabric capacities are not offered in every Azure region, so this
-# example randomises across a vetted subset rather than using the
-# Azure/avm-utl-regions module (which returns every region).
+# Microsoft Fabric capacities are not offered in every Azure region, and Fabric
+# capacity-unit (CU) quota is granted per subscription *per region*. Randomising
+# the region -- as the Azure/avm-utl-regions module would -- means an apply can
+# land in a region where the subscription's Fabric CU limit is 0 and fail before
+# it creates anything. The examples therefore pin a single region that has
+# default (out-of-the-box) Fabric CU quota, so they deploy without first raising
+# a quota-increase request.
+# https://learn.microsoft.com/fabric/enterprise/fabric-quotas
 locals {
-  fabric_regions = [
-    "australiaeast",
-    "canadacentral",
-    "eastus",
-    "eastus2",
-    "francecentral",
-    "northeurope",
-    "southeastasia",
-    "swedencentral",
-    "uksouth",
-    "westeurope",
-    "westus2",
-    "westus3",
-  ]
-}
-
-resource "random_integer" "region_index" {
-  max = length(local.fabric_regions) - 1
-  min = 0
+  location = "swedencentral"
 }
 
 module "naming" {
@@ -75,7 +70,7 @@ resource "random_string" "suffix" {
 }
 
 resource "azurerm_resource_group" "this" {
-  location = local.fabric_regions[random_integer.region_index.result]
+  location = local.location
   name     = module.naming.resource_group.name_unique
 }
 
@@ -151,7 +146,6 @@ The following resources are used by this module:
 
 - [azurerm_resource_group.this](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/resource_group) (resource)
 - [azurerm_user_assigned_identity.this](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/user_assigned_identity) (resource)
-- [random_integer.region_index](https://registry.terraform.io/providers/hashicorp/random/latest/docs/resources/integer) (resource)
 - [random_string.suffix](https://registry.terraform.io/providers/hashicorp/random/latest/docs/resources/string) (resource)
 
 <!-- markdownlint-disable MD013 -->
