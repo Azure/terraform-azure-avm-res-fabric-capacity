@@ -15,6 +15,11 @@ terraform {
 
 provider "azurerm" {
   features {}
+  # Microsoft.Fabric is not part of the AzureRM provider's default registration
+  # set, so a subscription that has never deployed Fabric rejects the capacity
+  # PUT with 409 MissingSubscriptionRegistration. Registering it here blocks
+  # until the provider reports Registered, before any resource is created.
+  resource_providers_to_register = ["Microsoft.Fabric"]
 }
 
 # Microsoft Fabric capacities are not offered in every Azure region, and Fabric

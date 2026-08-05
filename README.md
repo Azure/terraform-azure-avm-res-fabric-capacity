@@ -16,6 +16,11 @@ This is an [Azure Verified Module (AVM)](https://aka.ms/avm) **resource module**
 
 Tenant settings are intentionally excluded. They are tenant-scoped Fabric API resources rather than properties of a capacity, so they belong to a tenant-settings module rather than this one.
 
+## Prerequisites
+
+- The `Microsoft.Fabric` resource provider must be registered on the target subscription. It is not part of the AzureRM provider's default registration set, so a subscription that has never deployed Fabric fails with `409 MissingSubscriptionRegistration`. Register it with `resource_providers_to_register = ["Microsoft.Fabric"]` in your `azurerm` provider block, or out of band with `az provider register --namespace Microsoft.Fabric`.
+- The subscription needs [Fabric capacity-unit (CU) quota](https://learn.microsoft.com/fabric/enterprise/fabric-quotas) in the target region. Quota is granted per subscription **per region**, and most regions start at `0` CUs until a quota-increase request is approved.
+
 > [!NOTE]
 > A Fabric capacity bills from the moment it is created until it is deleted or paused, regardless of use. Size the SKU deliberately and pause or delete capacities you are not using.
 
