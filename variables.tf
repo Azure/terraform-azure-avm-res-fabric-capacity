@@ -93,20 +93,20 @@ variable "resource_types" {
 
 variable "retry" {
   type = object({
-    error_message_regex  = optional(list(string))
-    interval_seconds     = optional(number)
-    max_interval_seconds = optional(number)
+    error_message_regex  = optional(list(string), ["ScopeLocked"])
+    interval_seconds     = optional(number, null)
+    max_interval_seconds = optional(number, null)
   })
-  default     = null
+  default     = {}
   description = <<DESCRIPTION
-Retry configuration applied to every `azapi` resource managed by this module. Defaults to `null`, which keeps the AzAPI provider's own behaviour -- it already retries HTTP 408, 429, 500, 502, 503 and 504.
+Retry configuration applied to every `azapi` resource managed by this module.
 
-- `error_message_regex`  - (Optional) Regex patterns matched against the error message. A match triggers a retry.
+- `error_message_regex`  - (Optional) Regex patterns matched against the error message. A match triggers a retry. Defaults to `["ScopeLocked"]`, which absorbs the window in which Azure still reports a management lock that has just been removed -- the capacity delete races with the removal of its own `lock`. Supplying this attribute replaces the default, so include `ScopeLocked` in your list if you still want that behaviour.
 - `interval_seconds`     - (Optional) Initial interval between retries, in seconds.
 - `max_interval_seconds` - (Optional) Maximum interval between retries, in seconds.
-
 See <https://registry.terraform.io/providers/Azure/azapi/latest/docs/resources/resource#retry>.
 DESCRIPTION
+  nullable    = false
 }
 
 variable "role_assignments" {

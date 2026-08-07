@@ -17,6 +17,8 @@ The managed identity that administers the capacity is created in the same `terra
 
 The `Microsoft.Fabric` resource provider needs no such handling — the AzAPI provider registers resource providers automatically unless `skip_provider_registration` is set.
 
+The resource group carries its own `retry` on `ScopeLocked`. Azure evaluates management locks with eventual consistency, so ARM can still report the capacity's `CanNotDelete` lock for a short while after Terraform has removed it — and the resource group is destroyed last. The module call keeps `ScopeLocked` in its list too, because supplying `error_message_regex` replaces the module's default rather than adding to it.
+
 ## Why Sweden Central?
 
 The example pins `swedencentral` rather than randomising a region.
@@ -80,6 +82,15 @@ resource "azapi_resource" "resource_group" {
   type                   = "Microsoft.Resources/resourceGroups@2025-04-01"
   replace_triggers_refs  = []
   response_export_values = []
+  # The resource group is destroyed last, and Azure evaluates management locks with
+  # eventual consistency -- ARM can still report the capacity's `CanNotDelete` lock
+  # for a short while after Terraform has removed it. Without this the group's
+  # DELETE fails outright with `409 ScopeLocked`.
+  retry = {
+    error_message_regex  = ["ScopeLocked"]
+    interval_seconds     = 15
+    max_interval_seconds = 60
+  }
 }
 
 # A deterministic service principal used both to administer the capacity and to
@@ -122,13 +133,10 @@ module "fabric_capacity" {
     }
   }
 
-  # The managed identity's service principal is created in this same apply, and the
-  # Fabric control plane rejects it with `400 BadRequest / All provided principals
-  # must be existing` until Entra ID has replicated it. Retrying absorbs that.
-  # Never match on `409 Conflict` here -- MissingSubscriptionRegistration is a 409,
-  # and swallowing it stops AzAPI from auto-registering Microsoft.Fabric.
   retry = {
-    error_message_regex = ["All provided principals must be existing"]
+    error_message_regex  = ["ScopeLocked", "All provided principals must be existing"]
+    interval_seconds     = 15
+    max_interval_seconds = 60
   }
 
   timeouts = {

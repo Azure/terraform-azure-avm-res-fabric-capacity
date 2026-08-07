@@ -15,6 +15,8 @@ The managed identity that administers the capacity is created in the same `terra
 
 The `Microsoft.Fabric` resource provider needs no such handling — the AzAPI provider registers resource providers automatically unless `skip_provider_registration` is set.
 
+The resource group carries its own `retry` on `ScopeLocked`. Azure evaluates management locks with eventual consistency, so ARM can still report the capacity's `CanNotDelete` lock for a short while after Terraform has removed it — and the resource group is destroyed last. The module call keeps `ScopeLocked` in its list too, because supplying `error_message_regex` replaces the module's default rather than adding to it.
+
 ## Why Sweden Central?
 
 The example pins `swedencentral` rather than randomising a region.
