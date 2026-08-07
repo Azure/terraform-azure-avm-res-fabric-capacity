@@ -2,6 +2,10 @@
 
 This deploys the module in its simplest form: a single F2 Microsoft Fabric capacity in a new resource group, administered by a purpose-created user-assigned managed identity.
 
+## Registering `Microsoft.Fabric`
+
+`Microsoft.Fabric` is not registered on a subscription by default, and a subscription that has never deployed Fabric rejects the capacity `PUT` with `409 MissingSubscriptionRegistration`. The example registers the provider with an `azapi_resource_action`. That `POST` returns as soon as the request is accepted rather than when the provider reaches `Registered`, so the module call also adds `MissingSubscriptionRegistration` to `retry.error_message_regex` and retries until registration completes.
+
 ## Why Sweden Central?
 
 The example pins `swedencentral` rather than randomising a region.

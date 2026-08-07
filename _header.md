@@ -16,7 +16,7 @@ Tenant settings are intentionally excluded. They are tenant-scoped Fabric API re
 
 ## Prerequisites
 
-- The `Microsoft.Fabric` resource provider must be registered on the target subscription. It is not part of the AzureRM provider's default registration set, so a subscription that has never deployed Fabric fails with `409 MissingSubscriptionRegistration`. Register it with `resource_providers_to_register = ["Microsoft.Fabric"]` in your `azurerm` provider block, or out of band with `az provider register --namespace Microsoft.Fabric`.
+- The `Microsoft.Fabric` resource provider must be registered on the target subscription. It is not registered by default, so a subscription that has never deployed Fabric fails with `409 MissingSubscriptionRegistration`. Register it out of band with `az provider register --namespace Microsoft.Fabric`, or in Terraform with an `azapi_resource_action` as the examples do. Registration is asynchronous, so add `MissingSubscriptionRegistration` to `retry.error_message_regex` when you register in the same apply.
 - The subscription needs [Fabric capacity-unit (CU) quota](https://learn.microsoft.com/fabric/enterprise/fabric-quotas) in the target region. Quota is granted per subscription **per region**, and most regions start at `0` CUs until a quota-increase request is approved.
 
 > [!NOTE]

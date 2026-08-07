@@ -9,6 +9,10 @@ This deploys the module exercising every AVM interface the `Microsoft.Fabric/cap
 
 Diagnostic settings, managed identities, private endpoints and customer-managed keys are intentionally absent — the Fabric capacities resource does not support them. See the [module notes](../../README.md#notes) for the evidence behind each exclusion.
 
+## Registering `Microsoft.Fabric`
+
+`Microsoft.Fabric` is not registered on a subscription by default, and a subscription that has never deployed Fabric rejects the capacity `PUT` with `409 MissingSubscriptionRegistration`. The example registers the provider with an `azapi_resource_action`. That `POST` returns as soon as the request is accepted rather than when the provider reaches `Registered`, so `retry.error_message_regex` also carries `MissingSubscriptionRegistration` and retries until registration completes.
+
 ## Why Sweden Central?
 
 The example pins `swedencentral` rather than randomising a region.

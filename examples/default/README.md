@@ -4,6 +4,10 @@
 
 This deploys the module in its simplest form: a single F2 Microsoft Fabric capacity in a new resource group, administered by a purpose-created user-assigned managed identity.
 
+## Registering `Microsoft.Fabric`
+
+`Microsoft.Fabric` is not registered on a subscription by default, and a subscription that has never deployed Fabric rejects the capacity `PUT` with `409 MissingSubscriptionRegistration`. The example registers the provider with an `azapi_resource_action`. That `POST` returns as soon as the request is accepted rather than when the provider reaches `Registered`, so the module call also adds `MissingSubscriptionRegistration` to `retry.error_message_regex` and retries until registration completes.
+
 ## Why Sweden Central?
 
 The example pins `swedencentral` rather than randomising a region.
@@ -17,24 +21,15 @@ terraform {
   required_version = ">= 1.9, < 2.0"
 
   required_providers {
-    azurerm = {
-      source  = "hashicorp/azurerm"
-      version = "~> 4.0"
+    azapi = {
+      source  = "Azure/azapi"
+      version = "~> 2.4"
     }
     random = {
       source  = "hashicorp/random"
       version = "~> 3.6"
     }
   }
-}
-
-provider "azurerm" {
-  features {}
-  # Microsoft.Fabric is not part of the AzureRM provider's default registration
-  # set, so a subscription that has never deployed Fabric rejects the capacity
-  # PUT with 409 MissingSubscriptionRegistration. Registering it here blocks
-  # until the provider reports Registered, before any resource is created.
-  resource_providers_to_register = ["Microsoft.Fabric"]
 }
 
 # Microsoft Fabric capacities are not offered in every Azure region, and Fabric
@@ -48,6 +43,8 @@ provider "azurerm" {
 locals {
   location = "swedencentral"
 }
+
+data "azapi_client_config" "current" {}
 
 module "naming" {
   source  = "Azure/naming/azurerm"
@@ -64,31 +61,56 @@ resource "random_string" "suffix" {
   upper   = false
 }
 
-resource "azurerm_resource_group" "this" {
-  location = local.location
-  name     = module.naming.resource_group.name_unique
+# Microsoft.Fabric is not registered on a subscription by default, so one that has
+# never deployed Fabric rejects the capacity PUT with 409
+# MissingSubscriptionRegistration. The registration POST returns as soon as it is
+# accepted rather than when the provider reaches Registered, so the module call
+# below also retries on that error.
+resource "azapi_resource_action" "register_fabric" {
+  resource_id            = "${data.azapi_client_config.current.subscription_resource_id}/providers/Microsoft.Fabric"
+  type                   = "Microsoft.Resources/providers@2021-04-01"
+  action                 = "register"
+  method                 = "POST"
+  response_export_values = []
+}
+
+resource "azapi_resource" "resource_group" {
+  location               = local.location
+  name                   = module.naming.resource_group.name_unique
+  parent_id              = data.azapi_client_config.current.subscription_resource_id
+  type                   = "Microsoft.Resources/resourceGroups@2025-04-01"
+  replace_triggers_refs  = []
+  response_export_values = []
 }
 
 # The Fabric capacities API accepts an Entra user by UPN, or a service principal
 # by object ID -- a user's object ID is rejected. Administering the capacity with
 # a purpose-created managed identity keeps the example working whether it is
 # applied by a user or by a service principal, and needs no inputs.
-resource "azurerm_user_assigned_identity" "fabric_admin" {
-  location            = azurerm_resource_group.this.location
-  name                = module.naming.user_assigned_identity.name_unique
-  resource_group_name = azurerm_resource_group.this.name
+resource "azapi_resource" "fabric_admin" {
+  location               = azapi_resource.resource_group.location
+  name                   = module.naming.user_assigned_identity.name_unique
+  parent_id              = azapi_resource.resource_group.id
+  type                   = "Microsoft.ManagedIdentity/userAssignedIdentities@2024-11-30"
+  replace_triggers_refs  = []
+  response_export_values = ["properties.principalId"]
 }
 
 module "fabric_capacity" {
   source = "../../"
 
-  location  = azurerm_resource_group.this.location
+  location  = azapi_resource.resource_group.location
   name      = "fc${random_string.suffix.result}"
-  parent_id = azurerm_resource_group.this.id
+  parent_id = azapi_resource.resource_group.id
   sku_name  = "F2"
   # In a real deployment, supply the UPNs of your capacity administrators.
-  administration_members = [azurerm_user_assigned_identity.fabric_admin.principal_id]
+  administration_members = [azapi_resource.fabric_admin.output.properties.principalId]
   enable_telemetry       = var.enable_telemetry
+  retry = {
+    error_message_regex = ["409 Conflict", "429 Too Many Requests", "MissingSubscriptionRegistration"]
+  }
+
+  depends_on = [azapi_resource_action.register_fabric]
 }
 ```
 
@@ -99,7 +121,7 @@ The following requirements are needed by this module:
 
 - <a name="requirement_terraform"></a> [terraform](#requirement\_terraform) (>= 1.9, < 2.0)
 
-- <a name="requirement_azurerm"></a> [azurerm](#requirement\_azurerm) (~> 4.0)
+- <a name="requirement_azapi"></a> [azapi](#requirement\_azapi) (~> 2.4)
 
 - <a name="requirement_random"></a> [random](#requirement\_random) (~> 3.6)
 
@@ -107,9 +129,11 @@ The following requirements are needed by this module:
 
 The following resources are used by this module:
 
-- [azurerm_resource_group.this](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/resource_group) (resource)
-- [azurerm_user_assigned_identity.fabric_admin](https://registry.terraform.io/providers/hashicorp/azurerm/latest/docs/resources/user_assigned_identity) (resource)
+- [azapi_resource.fabric_admin](https://registry.terraform.io/providers/Azure/azapi/latest/docs/resources/resource) (resource)
+- [azapi_resource.resource_group](https://registry.terraform.io/providers/Azure/azapi/latest/docs/resources/resource) (resource)
+- [azapi_resource_action.register_fabric](https://registry.terraform.io/providers/Azure/azapi/latest/docs/resources/resource_action) (resource)
 - [random_string.suffix](https://registry.terraform.io/providers/hashicorp/random/latest/docs/resources/string) (resource)
+- [azapi_client_config.current](https://registry.terraform.io/providers/Azure/azapi/latest/docs/data-sources/client_config) (data source)
 
 <!-- markdownlint-disable MD013 -->
 ## Required Inputs
