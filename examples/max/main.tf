@@ -49,13 +49,22 @@ resource "azapi_resource" "resource_group" {
   type                   = "Microsoft.Resources/resourceGroups@2025-04-01"
   replace_triggers_refs  = []
   response_export_values = []
+  # The resource group is destroyed last, and Azure evaluates management locks with
+  # eventual consistency -- ARM can still report the capacity's `CanNotDelete` lock
+  # for a short while after Terraform has removed it. Without this the group's
+  # DELETE fails outright with `409 ScopeLocked`.
+  retry = {
+    error_message_regex  = ["ScopeLocked"]
+    interval_seconds     = 15
+    max_interval_seconds = 60
+  }
 }
 
-# The Fabric capacities API accepts an Entra user by UPN, or a service principal
-# by object ID -- a user's object ID is rejected. Administering the capacity with
-# a purpose-created managed identity keeps the example working whether it is
-# applied by a user or by a service principal, and needs no inputs.
-resource "azapi_resource" "fabric_admin" {
+# A deterministic service principal used both to administer the capacity and to
+# receive the role assignment, so the example behaves identically whether it is
+# applied by a user or by CI. The Fabric capacities API accepts an Entra user by
+# UPN, or a service principal by object ID -- a user's object ID is rejected.
+resource "azapi_resource" "user_assigned_identity" {
   location               = azapi_resource.resource_group.location
   name                   = module.naming.user_assigned_identity.name_unique
   parent_id              = azapi_resource.resource_group.id
@@ -72,14 +81,41 @@ module "fabric_capacity" {
   parent_id = azapi_resource.resource_group.id
   sku_name  = "F2"
   # In a real deployment, supply the UPNs of your capacity administrators.
-  administration_members = [azapi_resource.fabric_admin.output.properties.principalId]
+  administration_members = [azapi_resource.user_assigned_identity.output.properties.principalId]
   enable_telemetry       = var.enable_telemetry
-  # The managed identity's service principal is created in this same apply, and the
-  # Fabric control plane rejects it with `400 BadRequest / All provided principals
-  # must be existing` until Entra ID has replicated it. Retrying absorbs that.
-  # Never match on `409 Conflict` here -- MissingSubscriptionRegistration is a 409,
-  # and swallowing it stops AzAPI from auto-registering Microsoft.Fabric.
+
+  lock = {
+    kind = "CanNotDelete"
+    name = "lock-fabric-capacity"
+  }
+
+  role_assignments = {
+    reader = {
+      role_definition_id_or_name = "Reader"
+      principal_id               = azapi_resource.user_assigned_identity.output.properties.principalId
+      principal_type             = "ServicePrincipal"
+      description                = "Read access to the Fabric capacity for the example workload identity."
+      # The identity is created in the same apply, so skip the Entra replication check.
+      skip_service_principal_aad_check = true
+    }
+  }
+
   retry = {
-    error_message_regex = ["All provided principals must be existing"]
+    error_message_regex  = ["ScopeLocked", "All provided principals must be existing"]
+    interval_seconds     = 15
+    max_interval_seconds = 60
+  }
+
+  timeouts = {
+    create = "45m"
+    delete = "45m"
+    read   = "5m"
+    update = "45m"
+  }
+
+  tags = {
+    environment = "example"
+    workload    = "fabric-capacity"
   }
 }
+
