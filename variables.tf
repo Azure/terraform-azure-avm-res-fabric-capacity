@@ -105,8 +105,6 @@ Retry configuration applied to every `azapi` resource managed by this module. De
 - `interval_seconds`     - (Optional) Initial interval between retries, in seconds.
 - `max_interval_seconds` - (Optional) Maximum interval between retries, in seconds.
 
-Do **not** add a blanket `409 Conflict` pattern. `MissingSubscriptionRegistration` is returned as HTTP 409, and the AzAPI provider's automatic resource-provider registration only fires when that 409 reaches it. Matching on `409 Conflict` retries the error instead, so `Microsoft.Fabric` is never registered and the apply hangs until `timeouts.create` expires.
-
 See <https://registry.terraform.io/providers/Azure/azapi/latest/docs/resources/resource#retry>.
 DESCRIPTION
 }

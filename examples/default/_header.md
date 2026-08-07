@@ -6,7 +6,7 @@ This deploys the module in its simplest form: a single F2 Microsoft Fabric capac
 
 The managed identity that administers the capacity is created in the same `terraform apply`. Entra ID replicates its service principal asynchronously, so the Fabric control plane can still reject it with `400 BadRequest / All provided principals must be existing` when the capacity is created moments later. Adding that message to `retry.error_message_regex` lets AzAPI retry the `PUT` until replication catches up.
 
-The `Microsoft.Fabric` resource provider needs no such handling -- the AzAPI provider registers resource providers automatically unless `skip_provider_registration` is set. Note that the regex list deliberately does **not** contain `409 Conflict`: `MissingSubscriptionRegistration` is returned as a `409`, and matching it here would stop AzAPI from ever registering the provider.
+The `Microsoft.Fabric` resource provider needs no such handling -- the AzAPI provider registers resource providers automatically unless `skip_provider_registration` is set.
 
 ## Why Sweden Central?
 
