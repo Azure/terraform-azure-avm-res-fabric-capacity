@@ -162,19 +162,27 @@ Default: `{}`
 
 ### <a name="input_retry"></a> [retry](#input\_retry)
 
-Description: Retry configuration for AzAPI resource operations.
+Description: Retry configuration applied to every `azapi` resource managed by this module. Defaults to `null`, which keeps the AzAPI provider's own behaviour -- it already retries HTTP 408, 429, 500, 502, 503 and 504.
+
+- `error_message_regex`  - (Optional) Regex patterns matched against the error message. A match triggers a retry.
+- `interval_seconds`     - (Optional) Initial interval between retries, in seconds.
+- `max_interval_seconds` - (Optional) Maximum interval between retries, in seconds.
+
+Do **not** add a blanket `409 Conflict` pattern. `MissingSubscriptionRegistration` is returned as HTTP 409, and the AzAPI provider's automatic resource-provider registration only fires when that 409 reaches it. Matching on `409 Conflict` retries the error instead, so `Microsoft.Fabric` is never registered and the apply hangs until `timeouts.create` expires.
+
+See <https://registry.terraform.io/providers/Azure/azapi/latest/docs/resources/resource#retry>.
 
 Type:
 
 ```hcl
 object({
-    error_message_regex  = optional(list(string), ["409 Conflict", "429 Too Many Requests"])
-    interval_seconds     = optional(number, null)
-    max_interval_seconds = optional(number, null)
+    error_message_regex  = optional(list(string))
+    interval_seconds     = optional(number)
+    max_interval_seconds = optional(number)
   })
 ```
 
-Default: `{}`
+Default: `null`
 
 ### <a name="input_role_assignments"></a> [role\_assignments](#input\_role\_assignments)
 

@@ -15,7 +15,7 @@ Diagnostic settings, managed identities, private endpoints and customer-managed 
 
 The managed identity that administers the capacity is created in the same `terraform apply`. Entra ID replicates its service principal asynchronously, so the Fabric control plane can still reject it with `400 BadRequest / All provided principals must be existing` when the capacity is created moments later. Adding that message to `retry.error_message_regex` lets AzAPI retry the `PUT` until replication catches up — the same reason the role assignment sets `skip_service_principal_aad_check`.
 
-The `Microsoft.Fabric` resource provider needs no such handling — the AzAPI provider registers resource providers automatically unless `skip_provider_registration` is set.
+The `Microsoft.Fabric` resource provider needs no such handling — the AzAPI provider registers resource providers automatically unless `skip_provider_registration` is set. Note that the regex list deliberately does **not** contain `409 Conflict`: `MissingSubscriptionRegistration` is returned as a `409`, and matching it here would stop AzAPI from ever registering the provider.
 
 ## Why Sweden Central?
 
@@ -125,8 +125,10 @@ module "fabric_capacity" {
   # The managed identity's service principal is created in this same apply, and the
   # Fabric control plane rejects it with `400 BadRequest / All provided principals
   # must be existing` until Entra ID has replicated it. Retrying absorbs that.
+  # Never match on `409 Conflict` here -- MissingSubscriptionRegistration is a 409,
+  # and swallowing it stops AzAPI from auto-registering Microsoft.Fabric.
   retry = {
-    error_message_regex = ["409 Conflict", "429 Too Many Requests", "All provided principals must be existing"]
+    error_message_regex = ["All provided principals must be existing"]
   }
 
   timeouts = {

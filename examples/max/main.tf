@@ -94,8 +94,10 @@ module "fabric_capacity" {
   # The managed identity's service principal is created in this same apply, and the
   # Fabric control plane rejects it with `400 BadRequest / All provided principals
   # must be existing` until Entra ID has replicated it. Retrying absorbs that.
+  # Never match on `409 Conflict` here -- MissingSubscriptionRegistration is a 409,
+  # and swallowing it stops AzAPI from auto-registering Microsoft.Fabric.
   retry = {
-    error_message_regex = ["409 Conflict", "429 Too Many Requests", "All provided principals must be existing"]
+    error_message_regex = ["All provided principals must be existing"]
   }
 
   timeouts = {
