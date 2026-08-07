@@ -18,8 +18,9 @@ Tenant settings are intentionally excluded. They are tenant-scoped Fabric API re
 
 ## Prerequisites
 
-- The `Microsoft.Fabric` resource provider must be registered on the target subscription. It is not registered by default, so a subscription that has never deployed Fabric fails with `409 MissingSubscriptionRegistration`. Register it out of band with `az provider register --namespace Microsoft.Fabric`, or in Terraform with an `azapi_resource_action` as the examples do. Registration is asynchronous, so add `MissingSubscriptionRegistration` to `retry.error_message_regex` when you register in the same apply.
+- The `Microsoft.Fabric` resource provider must be registered on the target subscription, or the capacity `PUT` fails with `409 MissingSubscriptionRegistration`. The AzAPI provider registers it for you unless you set `skip_provider_registration = true` (or `ARM_SKIP_PROVIDER_REGISTRATION`); if you do, register it out of band with `az provider register --namespace Microsoft.Fabric`.
 - The subscription needs [Fabric capacity-unit (CU) quota](https://learn.microsoft.com/fabric/enterprise/fabric-quotas) in the target region. Quota is granted per subscription **per region**, and most regions start at `0` CUs until a quota-increase request is approved.
+- Every principal in `administration_members` must already exist in Entra ID. If you create the principal in the same `terraform apply` -- a new service principal or managed identity, for example -- the Fabric control plane can still reject it with `400 BadRequest / All provided principals must be existing` until Entra ID replicates. Add that message to `retry.error_message_regex`, as the examples do.
 
 > [!NOTE]
 > A Fabric capacity bills from the moment it is created until it is deleted or paused, regardless of use. Size the SKU deliberately and pause or delete capacities you are not using.

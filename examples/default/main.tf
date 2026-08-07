@@ -42,19 +42,6 @@ resource "random_string" "suffix" {
   upper   = false
 }
 
-# Microsoft.Fabric is not registered on a subscription by default, so one that has
-# never deployed Fabric rejects the capacity PUT with 409
-# MissingSubscriptionRegistration. The registration POST returns as soon as it is
-# accepted rather than when the provider reaches Registered, so the module call
-# below also retries on that error.
-resource "azapi_resource_action" "register_fabric" {
-  resource_id            = "${data.azapi_client_config.current.subscription_resource_id}/providers/Microsoft.Fabric"
-  type                   = "Microsoft.Resources/providers@2021-04-01"
-  action                 = "register"
-  method                 = "POST"
-  response_export_values = []
-}
-
 resource "azapi_resource" "resource_group" {
   location               = local.location
   name                   = module.naming.resource_group.name_unique
@@ -87,9 +74,10 @@ module "fabric_capacity" {
   # In a real deployment, supply the UPNs of your capacity administrators.
   administration_members = [azapi_resource.fabric_admin.output.properties.principalId]
   enable_telemetry       = var.enable_telemetry
+  # The managed identity's service principal is created in this same apply, and the
+  # Fabric control plane rejects it with `400 BadRequest / All provided principals
+  # must be existing` until Entra ID has replicated it. Retrying absorbs that.
   retry = {
-    error_message_regex = ["409 Conflict", "429 Too Many Requests", "MissingSubscriptionRegistration"]
+    error_message_regex = ["409 Conflict", "429 Too Many Requests", "All provided principals must be existing"]
   }
-
-  depends_on = [azapi_resource_action.register_fabric]
 }

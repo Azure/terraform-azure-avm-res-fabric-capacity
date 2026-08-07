@@ -11,9 +11,11 @@ This deploys the module exercising every AVM interface the `Microsoft.Fabric/cap
 
 Diagnostic settings, managed identities, private endpoints and customer-managed keys are intentionally absent — the Fabric capacities resource does not support them. See the [module notes](../../README.md#notes) for the evidence behind each exclusion.
 
-## Registering `Microsoft.Fabric`
+## Why the `retry` block?
 
-`Microsoft.Fabric` is not registered on a subscription by default, and a subscription that has never deployed Fabric rejects the capacity `PUT` with `409 MissingSubscriptionRegistration`. The example registers the provider with an `azapi_resource_action`. That `POST` returns as soon as the request is accepted rather than when the provider reaches `Registered`, so `retry.error_message_regex` also carries `MissingSubscriptionRegistration` and retries until registration completes.
+The managed identity that administers the capacity is created in the same `terraform apply`. Entra ID replicates its service principal asynchronously, so the Fabric control plane can still reject it with `400 BadRequest / All provided principals must be existing` when the capacity is created moments later. Adding that message to `retry.error_message_regex` lets AzAPI retry the `PUT` until replication catches up — the same reason the role assignment sets `skip_service_principal_aad_check`.
+
+The `Microsoft.Fabric` resource provider needs no such handling — the AzAPI provider registers resource providers automatically unless `skip_provider_registration` is set.
 
 ## Why Sweden Central?
 
@@ -71,19 +73,6 @@ resource "random_string" "suffix" {
   upper   = false
 }
 
-# Microsoft.Fabric is not registered on a subscription by default, so one that has
-# never deployed Fabric rejects the capacity PUT with 409
-# MissingSubscriptionRegistration. The registration POST returns as soon as it is
-# accepted rather than when the provider reaches Registered, so the module call
-# below also retries on that error.
-resource "azapi_resource_action" "register_fabric" {
-  resource_id            = "${data.azapi_client_config.current.subscription_resource_id}/providers/Microsoft.Fabric"
-  type                   = "Microsoft.Resources/providers@2021-04-01"
-  action                 = "register"
-  method                 = "POST"
-  response_export_values = []
-}
-
 resource "azapi_resource" "resource_group" {
   location               = local.location
   name                   = module.naming.resource_group.name_unique
@@ -133,8 +122,11 @@ module "fabric_capacity" {
     }
   }
 
+  # The managed identity's service principal is created in this same apply, and the
+  # Fabric control plane rejects it with `400 BadRequest / All provided principals
+  # must be existing` until Entra ID has replicated it. Retrying absorbs that.
   retry = {
-    error_message_regex = ["409 Conflict", "429 Too Many Requests", "MissingSubscriptionRegistration"]
+    error_message_regex = ["409 Conflict", "429 Too Many Requests", "All provided principals must be existing"]
   }
 
   timeouts = {
@@ -148,8 +140,6 @@ module "fabric_capacity" {
     environment = "example"
     workload    = "fabric-capacity"
   }
-
-  depends_on = [azapi_resource_action.register_fabric]
 }
 
 ```
@@ -171,7 +161,6 @@ The following resources are used by this module:
 
 - [azapi_resource.resource_group](https://registry.terraform.io/providers/Azure/azapi/latest/docs/resources/resource) (resource)
 - [azapi_resource.user_assigned_identity](https://registry.terraform.io/providers/Azure/azapi/latest/docs/resources/resource) (resource)
-- [azapi_resource_action.register_fabric](https://registry.terraform.io/providers/Azure/azapi/latest/docs/resources/resource_action) (resource)
 - [random_string.suffix](https://registry.terraform.io/providers/hashicorp/random/latest/docs/resources/string) (resource)
 - [azapi_client_config.current](https://registry.terraform.io/providers/Azure/azapi/latest/docs/data-sources/client_config) (data source)
 
