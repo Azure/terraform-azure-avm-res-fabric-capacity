@@ -106,9 +106,13 @@ module "fabric_capacity" {
     max_interval_seconds = 60
   }
 
+  # `delete` is deliberately shorter than the write timeouts. A capacity delete
+  # that is still being refused after this long is not going to succeed on the
+  # next retry either, and a long delete timeout only turns a failed destroy into
+  # a stalled CI job.
   timeouts = {
     create = "45m"
-    delete = "45m"
+    delete = "15m"
     read   = "5m"
     update = "45m"
   }

@@ -70,6 +70,14 @@ resource "azapi_resource" "lock" {
     read   = var.timeouts.read
     update = var.timeouts.update
   }
+
+  # A `CanNotDelete` lock on the capacity also blocks deletes of anything scoped
+  # to it, including its role assignments. Terraform destroys in reverse creation
+  # order, so creating the lock *after* the role assignments makes it the first
+  # thing destroyed. Without this the lock, the role assignments and the capacity
+  # delete concurrently and race, and every loser of that race comes back as
+  # `409 ScopeLocked`.
+  depends_on = [azapi_resource.role_assignments]
 }
 
 resource "azapi_resource" "role_assignments" {
