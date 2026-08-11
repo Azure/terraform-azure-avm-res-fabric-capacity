@@ -1,8 +1,3 @@
-output "location" {
-  description = "Azure region of the Fabric capacity."
-  value       = module.fabric_capacity.location
-}
-
 output "name" {
   description = "Name of the Fabric capacity."
   value       = module.fabric_capacity.name

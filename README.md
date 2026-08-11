@@ -240,21 +240,21 @@ Default: `{}`
 
 The following outputs are exported:
 
-### <a name="output_location"></a> [location](#output\_location)
-
-Description: Azure region of the Fabric capacity.
-
 ### <a name="output_name"></a> [name](#output\_name)
 
 Description: Name of the Fabric capacity.
 
-### <a name="output_resource"></a> [resource](#output\_resource)
+### <a name="output_provisioning_state"></a> [provisioning\_state](#output\_provisioning\_state)
 
-Description: The Fabric capacity resource, limited to the exported read-only values (`id`, `location`, `name`, `properties`, `sku`).
+Description: Provisioning state of the Fabric capacity, e.g. `Succeeded` or `Failed`.
 
 ### <a name="output_resource_id"></a> [resource\_id](#output\_resource\_id)
 
 Description: Azure resource ID of the Fabric capacity.
+
+### <a name="output_state"></a> [state](#output\_state)
+
+Description: Runtime state of the Fabric capacity, e.g. `Active` or `Paused`. Reported separately from `provisioning_state` because a capacity that provisioned successfully can still be suspended and therefore unusable.
 
 ## Modules
 

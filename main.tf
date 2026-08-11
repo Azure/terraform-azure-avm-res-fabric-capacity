@@ -30,12 +30,11 @@ resource "azapi_resource" "this" {
   delete_headers        = var.enable_telemetry ? { "User-Agent" : local.avm_azapi_header } : null
   read_headers          = var.enable_telemetry ? { "User-Agent" : local.avm_azapi_header } : null
   replace_triggers_refs = []
+  # Only the read-only attributes exposed as outputs. Exporting the whole response
+  # would persist the administration members and SKU in state for no benefit.
   response_export_values = [
-    "id",
-    "location",
-    "name",
-    "properties",
-    "sku",
+    "properties.provisioningState",
+    "properties.state",
   ]
   retry          = var.retry
   tags           = var.tags
