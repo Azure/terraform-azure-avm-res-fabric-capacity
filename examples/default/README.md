@@ -88,12 +88,12 @@ resource "azapi_resource" "fabric_admin" {
 module "fabric_capacity" {
   source = "../../"
 
-  location  = azapi_resource.resource_group.location
-  name      = "fc${random_string.suffix.result}"
-  parent_id = azapi_resource.resource_group.id
-  sku_name  = "F2"
   # In a real deployment, supply the UPNs of your capacity administrators.
   administration_members = [azapi_resource.fabric_admin.output.properties.principalId]
+  location               = azapi_resource.resource_group.location
+  name                   = "fc${random_string.suffix.result}"
+  parent_id              = azapi_resource.resource_group.id
+  sku_name               = "F2"
   enable_telemetry       = var.enable_telemetry
   # The managed identity's service principal is created in this same apply, and the
   # Fabric control plane rejects it with `400 BadRequest / All provided principals

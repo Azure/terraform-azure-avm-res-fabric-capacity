@@ -76,19 +76,22 @@ resource "azapi_resource" "user_assigned_identity" {
 module "fabric_capacity" {
   source = "../../"
 
-  location  = azapi_resource.resource_group.location
-  name      = "fc${random_string.suffix.result}"
-  parent_id = azapi_resource.resource_group.id
-  sku_name  = "F2"
   # In a real deployment, supply the UPNs of your capacity administrators.
   administration_members = [azapi_resource.user_assigned_identity.output.properties.principalId]
+  location               = azapi_resource.resource_group.location
+  name                   = "fc${random_string.suffix.result}"
+  parent_id              = azapi_resource.resource_group.id
+  sku_name               = "F2"
   enable_telemetry       = var.enable_telemetry
-
   lock = {
     kind = "CanNotDelete"
     name = "lock-fabric-capacity"
   }
-
+  retry = {
+    error_message_regex  = ["ScopeLocked", "All provided principals must be existing"]
+    interval_seconds     = 15
+    max_interval_seconds = 60
+  }
   role_assignments = {
     reader = {
       role_definition_id_or_name = "Reader"
@@ -99,13 +102,10 @@ module "fabric_capacity" {
       skip_service_principal_aad_check = true
     }
   }
-
-  retry = {
-    error_message_regex  = ["ScopeLocked", "All provided principals must be existing"]
-    interval_seconds     = 15
-    max_interval_seconds = 60
+  tags = {
+    environment = "example"
+    workload    = "fabric-capacity"
   }
-
   # `delete` is deliberately shorter than the write timeouts. A capacity delete
   # that is still being refused after this long is not going to succeed on the
   # next retry either, and a long delete timeout only turns a failed destroy into
@@ -116,10 +116,4 @@ module "fabric_capacity" {
     read   = "5m"
     update = "45m"
   }
-
-  tags = {
-    environment = "example"
-    workload    = "fabric-capacity"
-  }
 }
-

@@ -26,9 +26,6 @@ resource "azapi_resource" "this" {
       tier = "Fabric"
     }
   }
-  create_headers        = var.enable_telemetry ? { "User-Agent" : local.avm_azapi_header } : null
-  delete_headers        = var.enable_telemetry ? { "User-Agent" : local.avm_azapi_header } : null
-  read_headers          = var.enable_telemetry ? { "User-Agent" : local.avm_azapi_header } : null
   replace_triggers_refs = []
   # Only the read-only attributes exposed as outputs. Exporting the whole response
   # would persist the administration members and SKU in state for no benefit.
@@ -36,9 +33,8 @@ resource "azapi_resource" "this" {
     "properties.provisioningState",
     "properties.state",
   ]
-  retry          = var.retry
-  tags           = var.tags
-  update_headers = var.enable_telemetry ? { "User-Agent" : local.avm_azapi_header } : null
+  retry = var.retry
+  tags  = var.tags
 
   timeouts {
     create = var.timeouts.create
@@ -55,13 +51,9 @@ resource "azapi_resource" "lock" {
   parent_id              = azapi_resource.this.id
   type                   = module.interfaces.lock_azapi.type
   body                   = module.interfaces.lock_azapi.body
-  create_headers         = var.enable_telemetry ? { "User-Agent" : local.avm_azapi_header } : null
-  delete_headers         = var.enable_telemetry ? { "User-Agent" : local.avm_azapi_header } : null
-  read_headers           = var.enable_telemetry ? { "User-Agent" : local.avm_azapi_header } : null
   replace_triggers_refs  = []
   response_export_values = []
   retry                  = var.retry
-  update_headers         = var.enable_telemetry ? { "User-Agent" : local.avm_azapi_header } : null
 
   timeouts {
     create = var.timeouts.create
@@ -86,13 +78,9 @@ resource "azapi_resource" "role_assignments" {
   parent_id              = azapi_resource.this.id
   type                   = each.value.type
   body                   = each.value.body
-  create_headers         = var.enable_telemetry ? { "User-Agent" : local.avm_azapi_header } : null
-  delete_headers         = var.enable_telemetry ? { "User-Agent" : local.avm_azapi_header } : null
-  read_headers           = var.enable_telemetry ? { "User-Agent" : local.avm_azapi_header } : null
   replace_triggers_refs  = []
   response_export_values = []
   retry                  = var.retry
-  update_headers         = var.enable_telemetry ? { "User-Agent" : local.avm_azapi_header } : null
 
   timeouts {
     create = var.timeouts.create
