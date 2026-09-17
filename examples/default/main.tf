@@ -73,7 +73,7 @@ module "fabric_capacity" {
   name                   = "fc${random_string.suffix.result}"
   parent_id              = azapi_resource.resource_group.id
   sku_name               = "F2"
-  enable_telemetry       = var.enable_telemetry
+  enable_telemetry       = false
   # The managed identity's service principal is created in this same apply, and the
   # Fabric control plane rejects it with `400 BadRequest / All provided principals
   # must be existing` until Entra ID has replicated it. Retrying absorbs that.
