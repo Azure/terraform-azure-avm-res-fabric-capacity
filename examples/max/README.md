@@ -115,7 +115,7 @@ module "fabric_capacity" {
   name                   = "fc${random_string.suffix.result}"
   parent_id              = azapi_resource.resource_group.id
   sku_name               = "F2"
-  enable_telemetry       = false
+  enable_telemetry       = var.enable_telemetry
   lock = {
     kind = "CanNotDelete"
     name = "lock-fabric-capacity"
@@ -189,7 +189,7 @@ If it is set to false, then no telemetry will be collected.
 
 Type: `bool`
 
-Default: `true`
+Default: `false`
 
 ## Outputs
 
