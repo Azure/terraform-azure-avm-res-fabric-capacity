@@ -3,6 +3,9 @@
   "moduleDisplayName": "Fabric Capacity",
   "moduleDescription": "Intended AVM Terraform resource module for Microsoft.Fabric/capacities.",
   "canonicalType": "Microsoft.Fabric/capacities",
-  "owners": [],
+  "owners": [
+    "benvbr",
+    "bramcal"
+  ],
   "telemetryIdPrefix": "46d3xtrf.res.6e25c4e"
 }
