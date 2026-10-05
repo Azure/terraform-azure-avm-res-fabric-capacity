@@ -2,7 +2,7 @@ data "azapi_client_config" "current" {}
 
 module "interfaces" {
   source  = "Azure/avm-utl-interfaces/azure"
-  version = "0.6.0"
+  version = "0.7.0"
 
   enable_telemetry                 = var.enable_telemetry
   lock                             = var.lock
@@ -26,7 +26,6 @@ resource "azapi_resource" "this" {
       tier = "Fabric"
     }
   }
-  replace_triggers_refs = []
   # Only the read-only attributes exposed as outputs. Exporting the whole response
   # would persist the administration members and SKU in state for no benefit.
   response_export_values = [
@@ -51,7 +50,6 @@ resource "azapi_resource" "lock" {
   parent_id              = azapi_resource.this.id
   type                   = module.interfaces.lock_azapi.type
   body                   = module.interfaces.lock_azapi.body
-  replace_triggers_refs  = []
   response_export_values = []
   retry                  = var.retry
 
@@ -78,7 +76,6 @@ resource "azapi_resource" "role_assignments" {
   parent_id              = azapi_resource.this.id
   type                   = each.value.type
   body                   = each.value.body
-  replace_triggers_refs  = []
   response_export_values = []
   retry                  = var.retry
 
