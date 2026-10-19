@@ -28,8 +28,8 @@ locals {
 data "azapi_client_config" "current" {}
 
 module "naming" {
-  source  = "Azure/naming/azurerm"
-  version = "0.4.4"
+  source  = "Azure/avm-utl-naming/azure"
+  version = "0.2.0"
 }
 
 # Fabric capacity names are lowercase alphanumeric only, so a random suffix is
@@ -66,6 +66,9 @@ resource "azapi_resource" "fabric_admin" {
 
 module "fabric_capacity" {
   source = "../../"
+  providers = {
+    azapi = azapi
+  }
 
   # In a real deployment, supply the UPNs of your capacity administrators.
   administration_members = [azapi_resource.fabric_admin.output.properties.principalId]
