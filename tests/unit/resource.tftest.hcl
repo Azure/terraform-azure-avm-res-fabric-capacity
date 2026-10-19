@@ -1,12 +1,13 @@
 mock_provider "azapi" {
   mock_data "azapi_client_config" {
     defaults = {
-      subscription_id = "00000000-0000-0000-0000-000000000001"
-      tenant_id       = "00000000-0000-0000-0000-000000000002"
+      subscription_id          = "00000000-0000-0000-0000-000000000001"
+      tenant_id                = "00000000-0000-0000-0000-000000000002"
+      subscription_resource_id = "/subscriptions/00000000-0000-0000-0000-000000000001"
     }
   }
 }
-mock_provider "modtm" {}
+
 mock_provider "random" {}
 
 variables {
@@ -34,6 +35,10 @@ run "capacity_contract" {
     condition     = azapi_resource.this.type == "Microsoft.Fabric/capacities@2023-11-01"
     error_message = "The capacity must use the approved stable ARM API by default."
   }
+  providers = {
+    azapi  = azapi
+    random = random
+  }
 }
 
 run "lock_and_telemetry_controls" {
@@ -50,8 +55,12 @@ run "lock_and_telemetry_controls" {
   }
 
   assert {
-    condition     = length(modtm_telemetry.telemetry) == 0
+    condition     = length(azapi_resource.telemetry) == 0
     error_message = "Disabling telemetry must prevent telemetry resource creation."
+  }
+  providers = {
+    azapi  = azapi
+    random = random
   }
 }
 
@@ -63,6 +72,10 @@ run "rejects_group_object_id_claim" {
   }
 
   expect_failures = [var.administration_members]
+  providers = {
+    azapi  = azapi
+    random = random
+  }
 }
 
 run "rejects_invalid_sku" {
@@ -73,4 +86,8 @@ run "rejects_invalid_sku" {
   }
 
   expect_failures = [var.sku_name]
+  providers = {
+    azapi  = azapi
+    random = random
+  }
 }
