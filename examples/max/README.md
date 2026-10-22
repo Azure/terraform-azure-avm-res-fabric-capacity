@@ -108,9 +108,6 @@ resource "azapi_resource" "user_assigned_identity" {
 
 module "fabric_capacity" {
   source = "../../"
-  providers = {
-    azapi = azapi
-  }
 
   # In a real deployment, supply the UPNs of your capacity administrators.
   administration_members = [azapi_resource.user_assigned_identity.output.properties.principalId]
