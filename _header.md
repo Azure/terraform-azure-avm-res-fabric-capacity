@@ -52,7 +52,7 @@ module "capacity" {
 }
 ```
 
-See [examples/default](examples/default) for the simplest runnable configuration, and [examples/max](examples/max) for one exercising every supported AVM interface.
+See [examples/defaults](examples/defaults) for the simplest runnable configuration, and [examples/max](examples/max) for one exercising every supported AVM interface.
 
 ## Validation
 
